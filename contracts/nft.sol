@@ -24,8 +24,8 @@ contract Astrobot is
 
     bool public airdropState;
 
-    mapping(address => uint256) userAirdropMints;
-    mapping(address => bool) userWhitelisted;
+    mapping(address => uint256) public userAirdropMints;
+    mapping(address => bool) public userWhitelisted;
 
     address public saleContract;
 
@@ -38,6 +38,11 @@ contract Astrobot is
     event AirdropWhitelisted(address indexed _user, uint256 indexed _quantity);
     event AirdropClaimed(address indexed _user, uint256 indexed _quantity);
     event AirdropStateUpdated(bool indexed _newState);
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
      * @dev Initialize function use in place of constructor function.

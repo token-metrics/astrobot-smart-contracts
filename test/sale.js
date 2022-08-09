@@ -18,6 +18,7 @@ let nfToken,
 const DEFAULT_MIN_MINT = 1;
 const DEFAULT_MAX_MINT = 5;
 const DEFAULT_PRICE_ETHER = 1;
+let minSupplyPhaseOne, minSupplyPhaseTwo, minSupplyPhaseThree; 
 
 function whitelistMint(quantity, user, price, phase) {
   if (phase === 1) {
@@ -47,10 +48,19 @@ async function whitelistMintValidations(quantity, user, price, phase) {
   let quantityPhaseThree = 0;
   if (phase === 1) {
     quantityPhaseOne = quantity;
+    minSupplyPhaseOne = 100;
+    minSupplyPhaseTwo = 0;
+    minSupplyPhaseThree = 0;
   } else if (phase === 2) {
     quantityPhaseTwo = quantity;
+    minSupplyPhaseOne = 0;
+    minSupplyPhaseTwo = 100;
+    minSupplyPhaseThree = 0;
   } else {
     quantityPhaseThree = quantity;
+    minSupplyPhaseOne = 0;
+    minSupplyPhaseTwo = 0;
+    minSupplyPhaseThree = 100;
   }
   expect(await sale.userMinted(user.address)).to.equal(quantity);
   expect(await sale.totalMinted()).to.equal(quantity);
@@ -151,7 +161,7 @@ function mintConditions(phase) {
   });
 
   it("Should revert if user tries to mint more than max supply", async function () {
-    await sale.updateSaleSupply(200, 100, 100, 500, 100);
+    await sale.updateSaleSupply(minSupplyPhaseOne, minSupplyPhaseTwo, minSupplyPhaseThree , 500, 100);
     await whitelistMint(100, bob, DEFAULT_PRICE_ETHER, phase);
     await whitelistMintValidations(100, bob, DEFAULT_PRICE_ETHER, phase);
     await expect(
@@ -163,6 +173,17 @@ function mintConditions(phase) {
     await expect(
       whitelistMint(DEFAULT_MIN_MINT, bob, 0.99, phase)
     ).to.be.revertedWith("Invalid ether amount");
+  });
+
+  it("Should revert if user tries to buy with less amount", async function () {
+    await expect(
+      whitelistMint(DEFAULT_MIN_MINT, bob, 1.01, phase)
+    ).to.be.revertedWith("Invalid ether amount");
+  });
+
+  it("User should to buy with exact amount", async function () {
+    await whitelistMint(1, bob, DEFAULT_PRICE_ETHER, phase);
+    await whitelistMintValidations(1, bob, DEFAULT_PRICE_ETHER, phase);
   });
 
   it("Should revert if user tries to buy multiple tokens with less amount", async function () {
@@ -265,6 +286,13 @@ describe("Sale", function () {
         sale.connect(bob).updateSaleSupply(100, 100, 100, 5, 300)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
+
+    it("Should revert if owner tries to configure incorrect supply", async function () {
+      await expect(
+        sale.connect(owner).updateSaleSupply(100, 100, 100, 5, 400)
+      ).to.be.revertedWith("Invalid supply");
+    });
+  
   });
 
   describe("Whitelisted minting", function () {

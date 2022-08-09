@@ -94,7 +94,7 @@ contract Sale is
             MerkleProofUpgradeable.verify(proof, merkleRootPhaseOne, leaf),
             "Not whitelisted"
         );
-        require(msg.value >= amount * phaseOnePrice, "Invalid ether amount");
+        require(msg.value == amount * phaseOnePrice, "Invalid ether amount");
         require(totalMinted + amount <= maxSupply, "Sale completed");
         require(phaseOneMinted + amount <= phaseOneSupply, "All tokens minted");
         require(
@@ -116,7 +116,7 @@ contract Sale is
             MerkleProofUpgradeable.verify(proof, merkleRootPhaseTwo, leaf),
             "Not whitelisted"
         );
-        require(msg.value >= amount * phaseTwoPrice, "Invalid ether amount");
+        require(msg.value == amount * phaseTwoPrice, "Invalid ether amount");
         require(totalMinted + amount <= maxSupply, "Sale completed");
         require(phaseTwoMinted + amount <= phaseTwoSupply, "All tokens minted");
         _;
@@ -130,12 +130,17 @@ contract Sale is
             "Sale not open"
         );
         require(totalMinted + amount <= maxSupply, "Sale completed");
-        require(msg.value >= amount * phaseThreePrice, "Invalid ether amount");
+        require(msg.value == amount * phaseThreePrice, "Invalid ether amount");
         require(
             phaseThreeMinted + amount <= phaseThreeSupply,
             "All tokens minted"
         );
         _;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
     /**
@@ -145,6 +150,7 @@ contract Sale is
         __Pausable_init();
         __Ownable_init();
         __UUPSUpgradeable_init();
+        require(_nftAddres != address(0), "initialize: zero address");
         nftAddres = _nftAddres;
     }
 
@@ -254,6 +260,7 @@ contract Sale is
         uint256 _maxMintWallet,
         uint256 _maxSupply
     ) external onlyOwner {
+        require(_maxSupply == (_phaseOneSupply + _phaseTwoSupply + _phaseThreeSupply), "Invalid supply");
         phaseOneSupply = _phaseOneSupply;
         phaseTwoSupply = _phaseTwoSupply;
         phaseThreeSupply = _phaseThreeSupply;
