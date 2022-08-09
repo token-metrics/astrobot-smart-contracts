@@ -159,6 +159,10 @@ contract Astrobot is
             _addresses.length == _quantity.length,
             "update: Incorrect configuration"
         );
+        require(
+            _addresses.length <= 250,
+            "update: airdrop size cannot be more than 250"
+        );
         for (uint256 i = 0; i < _addresses.length; i++) {
             userAirdropMints[_addresses[i]] = _quantity[i];
             userWhitelisted[_addresses[i]] = true;
