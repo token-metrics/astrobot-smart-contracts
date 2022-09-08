@@ -18,11 +18,9 @@ contract Sale is
     UUPSUpgradeable
 {
     // Tokens available for mint
-    uint256 public maxMintWallet;
+    uint256 public maxPhase1MintLimit;
+    uint256 public maxPhase2MintLimit;
     uint256 public maxSupply;
-    uint256 public phaseOneSupply;
-    uint256 public phaseTwoSupply;
-    uint256 public phaseThreeSupply;
 
     // Minting start block and duration
     uint256 public phaseOneStartBlock;
@@ -48,8 +46,8 @@ contract Sale is
 
     address public nftAddres;
 
-    mapping(address => uint256) public userMinted;
-    mapping(address => bool) public userPhaseOneMint;
+    mapping(address => uint256) public userPhase1Minted;
+    mapping(address => uint256) public userPhase2Minted;
 
     // Events emitted.
     event Minted(
@@ -67,10 +65,8 @@ contract Sale is
         bytes32 _merkleRootPhaseTwo
     );
     event UpdateSaleSupply(
-        uint256 _phaseOneSupply,
-        uint256 _phaseTwoSupply,
-        uint256 _phaseThreeSupply,
-        uint256 _maxMintWallet,
+        uint256 _maxPhase1MintLimit,
+        uint256 _maxPhase2MintLimit,
         uint256 _maxSupply
     );
     event UpdateSaleTime(
@@ -96,9 +92,8 @@ contract Sale is
         );
         require(msg.value == amount * phaseOnePrice, "Invalid ether amount");
         require(totalMinted + amount <= maxSupply, "Sale completed");
-        require(phaseOneMinted + amount <= phaseOneSupply, "All tokens minted");
         require(
-            userMinted[msg.sender] + amount <= maxMintWallet,
+            userPhase1Minted[msg.sender] + amount <= maxPhase1MintLimit,
             "Minting limit"
         );
         _;
@@ -118,7 +113,10 @@ contract Sale is
         );
         require(msg.value == amount * phaseTwoPrice, "Invalid ether amount");
         require(totalMinted + amount <= maxSupply, "Sale completed");
-        require(phaseTwoMinted + amount <= phaseTwoSupply, "All tokens minted");
+        require(
+            userPhase2Minted[msg.sender] + amount <= maxPhase2MintLimit,
+            "Minting limit"
+        );
         _;
     }
 
@@ -131,10 +129,6 @@ contract Sale is
         );
         require(totalMinted + amount <= maxSupply, "Sale completed");
         require(msg.value == amount * phaseThreePrice, "Invalid ether amount");
-        require(
-            phaseThreeMinted + amount <= phaseThreeSupply,
-            "All tokens minted"
-        );
         _;
     }
 
@@ -247,30 +241,21 @@ contract Sale is
      * @notice Update NFT supply.
      *
      * @dev Update supply for each sale phase. Only owner can call this function.
-     * @param _maxMintWallet Max supply for user mint.
+     * @param _maxPhase1MintLimit Max supply for user mint in phase1.
+     * @param _maxPhase2MintLimit Max supply for user mint in phase2.
      * @param _maxSupply Max supply for user.
-     * @param _phaseOneSupply Max supply of phase one.
-     * @param _phaseTwoSupply Max supply of phase two.
-     * @param _phaseThreeSupply Max supply of phase three.
      */
     function updateSaleSupply(
-        uint256 _phaseOneSupply,
-        uint256 _phaseTwoSupply,
-        uint256 _phaseThreeSupply,
-        uint256 _maxMintWallet,
+        uint256 _maxPhase1MintLimit,
+        uint256 _maxPhase2MintLimit,
         uint256 _maxSupply
     ) external onlyOwner {
-        require(_maxSupply == (_phaseOneSupply + _phaseTwoSupply + _phaseThreeSupply), "Invalid supply");
-        phaseOneSupply = _phaseOneSupply;
-        phaseTwoSupply = _phaseTwoSupply;
-        phaseThreeSupply = _phaseThreeSupply;
-        maxMintWallet = _maxMintWallet;
+        maxPhase1MintLimit = _maxPhase1MintLimit;
+        maxPhase2MintLimit = _maxPhase2MintLimit;
         maxSupply = _maxSupply;
         emit UpdateSaleSupply(
-            _phaseOneSupply,
-            _phaseTwoSupply,
-            _phaseThreeSupply,
-            _maxMintWallet,
+            _maxPhase1MintLimit,
+            _maxPhase2MintLimit,
             _maxSupply
         );
     }
@@ -311,7 +296,7 @@ contract Sale is
         validatPhaseOnePurchase(quantity, proof)
     {
         phaseOneMinted = phaseOneMinted + quantity;
-        userPhaseOneMint[msg.sender] = true;
+        userPhase1Minted[msg.sender] = userPhase1Minted[msg.sender] + quantity;
         mint(quantity);
         emit Minted(msg.sender, 1, quantity);
     }
@@ -328,6 +313,7 @@ contract Sale is
         validatPhaseTwoPurchase(quantity, proof)
     {
         phaseTwoMinted = phaseTwoMinted + quantity;
+        userPhase2Minted[msg.sender] = userPhase2Minted[msg.sender] + quantity;
         mint(quantity);
         emit Minted(msg.sender, 2, quantity);
     }
@@ -343,7 +329,6 @@ contract Sale is
         whenNotPaused
         validatPhaseThreePurchase(quantity)
     {
-        require(!userPhaseOneMint[msg.sender], "User already minted");
         phaseThreeMinted = phaseThreeMinted + quantity;
         mint(quantity);
         emit Minted(msg.sender, 3, quantity);
@@ -354,7 +339,6 @@ contract Sale is
      * @param quantity Number of tokens to mint.
      */
     function mint(uint256 quantity) internal {
-        userMinted[msg.sender] = userMinted[msg.sender] + quantity;
         totalMinted = totalMinted + quantity;
         IERC721(nftAddres).mint(msg.sender, quantity);
     }
