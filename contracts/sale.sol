@@ -46,6 +46,7 @@ contract Sale is
 
     address public nftAddres;
 
+    mapping(address => uint256) public userMinted;
     mapping(address => uint256) public userPhase1Minted;
     mapping(address => uint256) public userPhase2Minted;
 
@@ -339,6 +340,7 @@ contract Sale is
      * @param quantity Number of tokens to mint.
      */
     function mint(uint256 quantity) internal {
+        userMinted[msg.sender] = userMinted[msg.sender] + quantity;
         totalMinted = totalMinted + quantity;
         IERC721(nftAddres).mint(msg.sender, quantity);
     }
