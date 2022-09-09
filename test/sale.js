@@ -51,11 +51,13 @@ async function whitelistMintValidations(quantity, user, price, phase) {
     minSupplyPhaseOne = 100;
     minSupplyPhaseTwo = 0;
     minSupplyPhaseThree = 0;
+    expect(await sale.userPhase1Minted(user.address)).to.equal(quantity);
   } else if (phase === 2) {
     quantityPhaseTwo = quantity;
     minSupplyPhaseOne = 0;
     minSupplyPhaseTwo = 100;
     minSupplyPhaseThree = 0;
+    expect(await sale.userPhase2Minted(user.address)).to.equal(quantity);
   } else {
     quantityPhaseThree = quantity;
     minSupplyPhaseOne = 0;
@@ -94,7 +96,7 @@ function mintConditions(phase) {
     );
   });
 
-  if (phase === 1) {
+  if (phase === 1 || phase === 2) {
     it("Should revert if user tries to mint more than alloted", async function () {
       await whitelistMint(DEFAULT_MAX_MINT, bob, DEFAULT_PRICE_ETHER, phase);
       await whitelistMintValidations(
@@ -107,9 +109,7 @@ function mintConditions(phase) {
         whitelistMint(DEFAULT_MIN_MINT, bob, DEFAULT_PRICE_ETHER, phase)
       ).to.be.revertedWith("Minting limit");
     });
-  }
 
-  if (phase === 1 || phase === 2) {
     it("Should revert if non whitelisted user tries to buy", async function () {
       await expect(
         whitelistMint(DEFAULT_MAX_MINT, owner, DEFAULT_PRICE_ETHER, phase)
@@ -151,17 +151,8 @@ function mintConditions(phase) {
     ).to.be.revertedWith("Sale not open");
   });
 
-  it("Should revert if user tries to buy after Phase max supply reached", async function () {
-    await sale.updateSaleSupply(100, 100, 100, 500, 300);
-    await whitelistMint(100, bob, DEFAULT_PRICE_ETHER, phase);
-    await whitelistMintValidations(100, bob, DEFAULT_PRICE_ETHER, phase);
-    await expect(
-      whitelistMint(DEFAULT_MIN_MINT, bob, DEFAULT_PRICE_ETHER, phase)
-    ).to.be.revertedWith("All tokens minted");
-  });
-
   it("Should revert if user tries to mint more than max supply", async function () {
-    await sale.updateSaleSupply(minSupplyPhaseOne, minSupplyPhaseTwo, minSupplyPhaseThree , 500, 100);
+    await sale.updateSaleSupply(200, 200, 100);    
     await whitelistMint(100, bob, DEFAULT_PRICE_ETHER, phase);
     await whitelistMintValidations(100, bob, DEFAULT_PRICE_ETHER, phase);
     await expect(
@@ -233,8 +224,7 @@ describe("Sale", function () {
       ethers.utils.parseUnits("1", "ether").toHexString(),
       ethers.utils.parseUnits("1", "ether").toHexString()
     );
-    await sale.updateSaleSupply(100, 100, 100, 5, 300);
-
+    await sale.updateSaleSupply(5, 5, 300);
     const phaseOneStartBlock = parseInt(await time.latestBlock()) + 1;
     const phaseTwoStartBlock = phaseOneStartBlock + 100;
     const phaseThreeStartBlock = phaseTwoStartBlock + 100;
@@ -283,14 +273,8 @@ describe("Sale", function () {
 
     it("Only owner can update supply", async function () {
       await expect(
-        sale.connect(bob).updateSaleSupply(100, 100, 100, 5, 300)
+        sale.connect(bob).updateSaleSupply(100, 5, 300)
       ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should revert if owner tries to configure incorrect supply", async function () {
-      await expect(
-        sale.connect(owner).updateSaleSupply(100, 100, 100, 5, 400)
-      ).to.be.revertedWith("Invalid supply");
     });
   
   });
