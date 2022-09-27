@@ -31,6 +31,9 @@ contract Astrobot is
 
     string private _baseURIValue;
 
+    // New mapping for blacklisted user.
+    mapping(address => bool) public blacklisted;
+
     // Events emitted.
 
     event setBaseURIEvent(string indexed newBaseURI);
@@ -38,6 +41,8 @@ contract Astrobot is
     event AirdropWhitelisted(address indexed _user, uint256 indexed _quantity);
     event AirdropClaimed(address indexed _user, uint256 indexed _quantity);
     event AirdropStateUpdated(bool indexed _newState);
+    event AddressBlacklisted(address indexed _user, bool indexed _status);
+
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -210,6 +215,10 @@ contract Astrobot is
         uint256 tokenId,
         uint256 quantity
     ) internal override whenNotPaused {
+        require(!blacklisted[from], "Blacklisted address");
+        require(!blacklisted[to], "Blacklisted address");
+        require(!blacklisted[msg.sender], "Blacklisted address");
+
         super._beforeTokenTransfers(from, to, tokenId, quantity);
     }
 
@@ -234,5 +243,29 @@ contract Astrobot is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @dev Blacklist user addresses.
+     */
+    function blackListAddresses(
+        address[] memory _addresses
+    ) external onlyOwner {
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            blacklisted[_addresses[i]] = true;
+            emit AddressBlacklisted(_addresses[i], true);
+        }
+    }
+
+    /**
+     * @dev Remove addresses from blacklist.
+     */
+    function removeBlackListAddresses(
+        address[] memory _addresses
+    ) external onlyOwner {
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            blacklisted[_addresses[i]] = false;
+            emit AddressBlacklisted(_addresses[i], false);
+        }
     }
 }
